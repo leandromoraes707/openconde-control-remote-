@@ -2,17 +2,17 @@
 
 ## Conceito
 
-Cada `/nova` cria uma demanda-card. O bot guarda a demanda no SQLite, cria uma sessão no OpenCode e acompanha eventos pelo stream `/event`.
+Cada mensagem de demanda cria um card. O bot guarda a demanda no SQLite, cria uma sessão no OpenCode e acompanha eventos pelo stream `/event`.
 
 ## Instalação cola-token
 
-Cole no OpenCode/terminal:
+Cole no terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leandromoraes707/openconde-control-remote-/main/scripts/bootstrap.sh | bash
 ```
 
-Se preferir sem `curl`, use o clone direto:
+Se preferir sem `curl`:
 
 ```bash
 git clone https://github.com/leandromoraes707/openconde-control-remote-.git openconde-control-remote && cd openconde-control-remote && npm run setup && npm start
@@ -24,21 +24,24 @@ Se você já está dentro da pasta do projeto:
 npm run setup && npm start
 ```
 
-O instalador pede só o token do BotFather. Depois ele mostra o link do bot, você envia `/start` no Telegram e aperta Enter no terminal. Com isso ele captura seu Telegram user id, grava a allowlist em `.env`, instala dependências e roda as validações.
+O instalador pede só o token do BotFather em prompt interativo, valida o token, gera `.env`, instala dependências e mostra o link do bot. Ele não pede para capturar `/start` no terminal.
 
-Para usar depois do setup:
+Depois, mantenha este comando rodando no terminal:
 
 ```bash
 npm start
 ```
 
-Esse comando sobe `opencode serve` em `127.0.0.1` e inicia o bot.
+No Telegram, abra o link do bot e envie `/start`. O primeiro `/start` registra seu usuário em `TELEGRAM_ALLOWED_USER_IDS`. A partir daí, envie texto normal para criar demandas.
+
+Não envie `npm start` no Telegram; esse comando é apenas do terminal.
 
 ## Comandos
 
 ```text
 /start
 /ajuda
+texto normal para criar demanda
 /nova <descrição>
 /kanban
 /listar
@@ -50,7 +53,7 @@ Esse comando sobe `opencode serve` em `127.0.0.1` e inicia o bot.
 
 ## Fluxo recomendado
 
-1. Envie `/nova corrigir erro X e rodar validações`.
+1. Envie uma mensagem normal, por exemplo: `corrigir erro X e rodar validações`.
 2. Use `/kanban` para ver a demanda na coluna `Executando`.
 3. Se o OpenCode pedir decisão, o card muda para `Aguardando`.
 4. Responda com `/responder <id> <texto>`.
