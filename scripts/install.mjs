@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
@@ -10,6 +9,14 @@ const args = parseArgs(process.argv.slice(2));
 if (args.help) {
   printHelp();
   process.exit(0);
+}
+
+for (const secretArg of ["token", "server-password"]) {
+  if (args[secretArg]) {
+    console.error(`Erro: --${secretArg} foi removido para não expor segredo no histórico/processos.`);
+    console.error("Rode npm run setup e cole o token no prompt interativo.");
+    process.exit(1);
+  }
 }
 
 const dryRun = Boolean(args["dry-run"]);
@@ -34,9 +41,8 @@ async function main() {
     }
   }
 
-  const token = args.token || await askRequired("Cole o token do BotFather: ");
+  const token = await askRequired("Cole o token do BotFather: ");
   const workspace = args.workspace || process.cwd();
-  const serverPassword = args["server-password"] || randomBytes(24).toString("hex");
 
   let botUsername = args["bot-username"] || "seu_bot";
   if (!dryRun) {
@@ -46,7 +52,7 @@ async function main() {
     console.log(`Token validado: @${botUsername}`);
   }
 
-  const envText = buildEnv({ token, workspace, serverPassword });
+  const envText = buildEnv({ token, workspace });
 
   if (dryRun) {
     console.log("\n.env que seria gerado:");
@@ -56,7 +62,7 @@ async function main() {
   }
 
   writeFileSync(".env", envText, { mode: 0o600 });
-  console.log(".env gerado com token e senha local do OpenCode.");
+  console.log(".env gerado com token, workspace local e SQLite.");
 
   if (!skipInstall) run("npm", ["install"]);
   checkOpenCode();
@@ -68,9 +74,10 @@ async function main() {
   }
 
   console.log("\nPronto.");
-  console.log("1. Rode: npm start");
-  console.log("2. No Telegram, envie /start para o bot (isso registra voce como usuario autorizado)");
-  console.log("3. Crie demanda com: /nova <o que voce quer que o OpenCode faca>");
+  console.log("1. NO TERMINAL, deixe rodando: npm start");
+  console.log(`2. NO TELEGRAM, abra https://t.me/${botUsername} e envie /start`);
+  console.log("3. Depois do /start, envie texto normal com o que voce quer que o OpenCode faca.");
+  console.log("   Nao envie 'npm start' no Telegram; esse comando e so do terminal.");
 }
 
 async function verifyTelegramToken(token) {
@@ -94,13 +101,12 @@ async function telegramApi(token, method, body) {
   return data.result;
 }
 
-function buildEnv({ token, workspace, serverPassword }) {
+function buildEnv({ token, workspace }) {
   return [
     envLine("TELEGRAM_BOT_TOKEN", token),
     envLine("TELEGRAM_ALLOWED_USER_IDS", ""),
     envLine("OPENCODE_WORKSPACE", workspace),
     envLine("OPENCODE_SERVER_URL", "http://127.0.0.1:4096"),
-    envLine("OPENCODE_SERVER_PASSWORD", serverPassword),
     envLine("DATABASE_PATH", "./telegram-opencode.sqlite"),
     envLine("PENDING_RESPONSE_TIMEOUT_MINUTES", "30"),
     envLine("NOTIFICATION_FLUSH_MS", "2500")
@@ -171,11 +177,11 @@ function printHelp() {
 Fluxo interativo:
   1. cola token do BotFather
   2. instalador gera .env e instala pacotes
-  3. rode npm start e envie /start no Telegram para se registrar
+  3. rode npm start no terminal
+  4. abra o link do bot no Telegram, envie /start e depois texto normal
 
 Opcoes:
   --dry-run              mostra o .env sem escrever arquivo
-  --token <token>        informa token sem prompt
   --workspace <path>     muda OPENCODE_WORKSPACE
   --skip-install         nao roda npm install
   --checks               roda typecheck/test/qa:fake (desligado por padrao)
