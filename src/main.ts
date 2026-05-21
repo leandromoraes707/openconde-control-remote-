@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { createAuthorizer } from "./auth.js";
 import { loadConfig } from "./config.js";
 import { DemandManager } from "./domain/demand-manager.js";
+import { upsertEnvValue } from "./env-file.js";
 import { HttpOpenCodeClient } from "./opencode/http-client.js";
 import { SqliteStore } from "./store/sqlite-store.js";
 import { createTelegramBot } from "./telegram/bot.js";
@@ -21,7 +22,12 @@ export async function main(): Promise<void> {
     workspacePath: config.opencodeWorkspace,
     pendingResponseTimeoutMinutes: config.pendingResponseTimeoutMinutes
   });
-  const bot = createTelegramBot(config.telegramBotToken, authorizer, manager);
+  const bot = createTelegramBot(config.telegramBotToken, authorizer, manager, {
+    onUserRegistered(userIds) {
+      upsertEnvValue(".env", "TELEGRAM_ALLOWED_USER_IDS", userIds.join(","));
+      console.log(`telegram user autorizado e persistido: ${userIds.join(",")}`);
+    }
+  });
   manager.setNotifier(
     new BufferedNotifier(async (chatId, message) => {
       await bot.telegram.sendMessage(chatId, message);
@@ -31,8 +37,9 @@ export async function main(): Promise<void> {
   );
 
   await manager.start();
-  await bot.launch();
-  console.log(health());
+  const botInfo = await bot.telegram.getMe();
+  await bot.launch({ dropPendingUpdates: false });
+  console.log(`${health()} - @${botInfo.username} https://t.me/${botInfo.username}`);
 
   const shutdown = (signal: string) => {
     manager.stop();

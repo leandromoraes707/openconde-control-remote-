@@ -3,10 +3,24 @@ import type { Authorizer } from "../auth.js";
 import type { DemandManager } from "../domain/demand-manager.js";
 import { renderDemandLine } from "../domain/kanban.js";
 
-export function createTelegramBot(token: string, authorizer: Authorizer, manager: DemandManager): Telegraf<Context> {
+type TelegramBotOptions = {
+  onUserRegistered?: (userIds: number[]) => Promise<void> | void;
+};
+
+export type StartAuthorization = {
+  status: "allowed" | "registered" | "denied";
+  userIds: number[];
+};
+
+export function createTelegramBot(
+  token: string,
+  authorizer: Authorizer,
+  manager: DemandManager,
+  options: TelegramBotOptions = {}
+): Telegraf<Context> {
   const bot = new Telegraf(token);
 
-  bot.start((ctx) => handleStart(ctx, authorizer));
+  bot.start((ctx) => handleStart(ctx, authorizer, options));
   bot.command("ajuda", (ctx) => guarded(ctx, authorizer, () => ctx.reply(helpText())));
 
   bot.command("nova", (ctx) =>
@@ -102,6 +116,20 @@ export function createTelegramBot(token: string, authorizer: Authorizer, manager
     })
   );
 
+  bot.hears(/[\s\S]+/, (ctx) =>
+    guarded(ctx, authorizer, async () => {
+      const prompt = messageText(ctx).trim();
+      if (!prompt || prompt.startsWith("/")) return;
+
+      const chatId = ctx.chat?.id;
+      const userId = ctx.from?.id;
+      if (typeof chatId !== "number" || typeof userId !== "number") return;
+
+      const demand = await manager.createDemand({ chatId, userId, prompt });
+      await ctx.reply(`Demanda #${demand.id} criada: ${demand.title}\nVeja /kanban ou /status ${demand.id}.`);
+    })
+  );
+
   bot.catch((error, ctx) => {
     const message = error instanceof Error ? error.message : String(error);
     void ctx.reply(`Erro: ${message}`);
@@ -110,13 +138,25 @@ export function createTelegramBot(token: string, authorizer: Authorizer, manager
   return bot;
 }
 
-async function handleStart(ctx: Context, authorizer: Authorizer): Promise<void> {
+async function handleStart(ctx: Context, authorizer: Authorizer, options: TelegramBotOptions): Promise<void> {
   const userId = ctx.from?.id;
   if (typeof userId !== "number") return;
-  if (!authorizer.isAllowed(userId)) {
-    authorizer.register(userId);
+  const authorization = authorizeStartUser(authorizer, userId);
+  if (authorization.status === "denied") {
+    await ctx.reply("Usuário não autorizado.");
+    return;
   }
-  await ctx.reply(helpText());
+  if (authorization.status === "registered") {
+    await options.onUserRegistered?.(authorization.userIds);
+  }
+  await ctx.reply([authorization.status === "registered" ? `Usuário ${userId} autorizado neste bot.` : undefined, helpText()].filter(Boolean).join("\n\n"));
+}
+
+export function authorizeStartUser(authorizer: Authorizer, userId: number): StartAuthorization {
+  if (authorizer.isAllowed(userId)) return { status: "allowed", userIds: authorizer.allowedUserIds() };
+  if (authorizer.allowedUserIds().length > 0) return { status: "denied", userIds: authorizer.allowedUserIds() };
+  authorizer.register(userId);
+  return { status: "registered", userIds: authorizer.allowedUserIds() };
 }
 
 async function guarded(ctx: Context, authorizer: Authorizer, run: () => Promise<unknown> | unknown): Promise<void> {
@@ -130,7 +170,9 @@ async function guarded(ctx: Context, authorizer: Authorizer, run: () => Promise<
 function helpText(): string {
   return [
     "Telegram OpenCode Bot",
-    "/nova <demanda> — criar demanda",
+    "Envie uma mensagem normal para criar demanda no OpenCode.",
+    "Ex.: corrigir o erro X e rodar os testes",
+    "/nova <demanda> — criar demanda explicitamente",
     "/kanban — visão principal",
     "/listar — últimas demandas",
     "/status <id> — detalhes",
