@@ -6,7 +6,13 @@ Cada `/nova` cria uma demanda-card. O bot guarda a demanda no SQLite, cria uma s
 
 ## Instalação cola-token
 
-Se o repositório ainda não está na máquina, cole no OpenCode/terminal:
+Cole no OpenCode/terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leandromoraes707/openconde-control-remote-/main/scripts/bootstrap.sh | bash
+```
+
+Se preferir sem `curl`, use o clone direto:
 
 ```bash
 git clone https://github.com/leandromoraes707/openconde-control-remote-.git openconde-control-remote && cd openconde-control-remote && npm run setup && npm start

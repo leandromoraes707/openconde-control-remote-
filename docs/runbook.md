@@ -5,6 +5,12 @@
 Fluxo máquina zero:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/leandromoraes707/openconde-control-remote-/main/scripts/bootstrap.sh | bash
+```
+
+Fluxo alternativo sem `curl`:
+
+```bash
 git clone https://github.com/leandromoraes707/openconde-control-remote-.git openconde-control-remote && cd openconde-control-remote && npm run setup && npm start
 ```
 

@@ -6,7 +6,15 @@ Ponte local-first entre Telegram e OpenCode. O bot cria demandas, controla sess�
 
 ### Comando único para colar no OpenCode
 
-Se o repositório ainda não está na máquina, cole este bloco no OpenCode/terminal:
+Cole este bloco no OpenCode/terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leandromoraes707/openconde-control-remote-/main/scripts/bootstrap.sh | bash
+```
+
+Ele clona o repositório, roda `npm run setup` e depois `npm start`.
+
+Se preferir sem `curl`, use o clone direto:
 
 ```bash
 git clone https://github.com/leandromoraes707/openconde-control-remote-.git openconde-control-remote && cd openconde-control-remote && npm run setup && npm start
