@@ -1,0 +1,30 @@
+{
+  "name": "telegram-opencode-bot",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/install.mjs",
+    "start": "node scripts/start.mjs",
+    "opencode:serve": "node scripts/opencode-serve.mjs",
+    "dev": "tsx src/main.ts",
+    "qa:fake": "tsx src/qa/fake-telegram.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "dotenv": "^16.4.7",
+    "telegraf": "^4.16.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-language-server": "^5.3.0",
+    "vitest": "^3.0.5"
+  }
+}
