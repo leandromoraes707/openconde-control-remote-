@@ -4,29 +4,29 @@ Ponte local-first entre Telegram e OpenCode. O bot cria demandas, controla sess�
 
 ## Instalação prática
 
-### Comando único para colar no OpenCode
+### Comando único
 
-Cole este bloco no OpenCode/terminal:
+Cole no terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leandromoraes707/openconde-control-remote-/main/scripts/bootstrap.sh | bash
 ```
 
-Ele clona o repositório, roda `npm run setup` e depois `npm start`.
+Ele clona o repositório, roda `npm run setup` e depois mantém `npm start` rodando. O setup pede o token do BotFather em prompt interativo; não passe token por argumento de linha de comando.
 
-Se preferir sem `curl`, use o clone direto:
+Se preferir sem `curl`:
 
 ```bash
 git clone https://github.com/leandromoraes707/openconde-control-remote-.git openconde-control-remote && cd openconde-control-remote && npm run setup && npm start
 ```
 
-Se você já abriu o OpenCode dentro da pasta do projeto, cole só:
+Se você já está dentro da pasta do projeto:
 
 ```bash
 npm run setup && npm start
 ```
 
-Durante o setup, você só precisa colar o token do BotFather, abrir o link do bot no Telegram, enviar `/start` e apertar Enter no terminal.
+Depois que o terminal mostrar que o bot está pronto, abra o link `https://t.me/<seu_bot>` no Telegram e envie `/start`. Esse primeiro `/start` registra e persiste seu usuário autorizado. Depois disso, envie texto normal no Telegram para criar demandas. Não envie `npm start` no Telegram; esse comando é só do terminal.
 
 ### Pré-requisitos
 
@@ -44,15 +44,13 @@ npm start
 
 O `npm run setup`:
 
-1. instala dependências;
-2. pede apenas o token do BotFather;
-3. valida o token no Telegram;
-4. mostra o link do bot e pede para você enviar `/start`;
-5. captura seu Telegram user id e grava `TELEGRAM_ALLOWED_USER_IDS`;
-6. gera `.env` com workspace atual, `127.0.0.1`, senha local do OpenCode e SQLite;
-7. roda `npm run typecheck`, `npm test` e `npm run qa:fake`.
+1. pede apenas o token do BotFather em prompt interativo;
+2. valida o token no Telegram e mostra o link do bot;
+3. gera `.env` com workspace atual, `127.0.0.1`, SQLite e allowlist vazia;
+4. instala dependências;
+5. não roda validações por padrão; use `npm run setup -- --checks` para rodar `typecheck`, testes e QA fake durante o setup.
 
-Depois, `npm start` sobe `opencode serve` local e o bot Telegram juntos.
+O `npm start` sobe `opencode serve` local e o bot Telegram juntos.
 
 Se quiser rodar em dois terminais:
 
@@ -75,10 +73,11 @@ npm run qa:fake
 
 Depois preencha `.env`, rode `npm run opencode:serve` e `npm run dev`.
 
-## Comandos Telegram
+## Uso no Telegram
 
-- `/start` ou `/ajuda`: mostra ajuda.
-- `/nova <demanda>`: cria uma demanda e envia para o OpenCode.
+- `/start` ou `/ajuda`: registra o usuário e mostra ajuda.
+- Texto normal: cria uma demanda e envia para o OpenCode.
+- `/nova <demanda>`: cria uma demanda explicitamente.
 - `/kanban`: mostra demandas por coluna.
 - `/listar`: lista as últimas demandas.
 - `/status <id>`: mostra estado detalhado.
@@ -88,7 +87,13 @@ Depois preencha `.env`, rode `npm run opencode:serve` e `npm run dev`.
 
 ## Segurança
 
-Este bot é uma ponte para execução local. Se token e allowlist vazarem, alguém pode acionar mudanças no workspace. Use `TELEGRAM_ALLOWED_USER_IDS`, mantenha o OpenCode em `127.0.0.1`, não use `--mdns` nem porta pública, e mantenha `.env`/SQLite fora do Git. O instalador gera `OPENCODE_SERVER_PASSWORD` e o `npm start` repassa essa senha ao `opencode serve`.
+Este bot é uma ponte para execução local. Se o token do Telegram ou a allowlist vazarem, alguém pode acionar mudanças no workspace.
+
+- Nunca cole o token do BotFather em chat, issue, log ou argumento CLI. Se isso acontecer, revogue e gere outro token no BotFather.
+- O setup grava `.env` com permissão `0600`; mantenha `.env` e SQLite fora do Git.
+- O primeiro `/start` persiste `TELEGRAM_ALLOWED_USER_IDS`; revise esse valor se usar a máquina com outras pessoas.
+- Mantenha o OpenCode em `127.0.0.1`; não use `--mdns` nem porta pública para este MVP.
+- `OPENCODE_SERVER_PASSWORD` não é gerado pelo setup porque o `opencode serve` atual não expõe flag de senha local.
 
 ## Licença
 
