@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { loadRuntimeEnv, opencodeServeArgs } from "./shared.mjs";
 
 if (process.argv.includes("--help")) {
-  console.log("Uso: npm start\nSobe opencode serve em 127.0.0.1 e depois inicia o bot Telegram.");
+  console.log("Uso: npm start\nSobe opencode serve em 127.0.0.1 e depois inicia o bot Telegram. Rode no terminal; nao envie no Telegram.");
   process.exit(0);
 }
 
@@ -12,6 +12,7 @@ const serverUrl = env.OPENCODE_SERVER_URL || "http://127.0.0.1:4096";
 let stopping = false;
 let bot;
 
+console.log(`Iniciando OpenCode em ${serverUrl}...`);
 const opencode = spawn("opencode", opencodeServeArgs(env), { stdio: "inherit", env });
 
 try {
@@ -22,7 +23,9 @@ try {
   process.exit(1);
 }
 
+console.log("OpenCode respondeu. Iniciando bot Telegram...");
 bot = spawn("npm", ["run", "dev"], { stdio: "inherit", env });
+console.log("Mantenha este terminal aberto. No Telegram, envie /start para o bot e depois texto normal.");
 
 opencode.on("exit", (code) => {
   if (!stopping) stopAll(code ?? 1);

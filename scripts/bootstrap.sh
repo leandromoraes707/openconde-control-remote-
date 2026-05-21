@@ -82,6 +82,18 @@ run_in_project() {
   (cd "$INSTALL_DIR" && bash -lc "$*")
 }
 
+run_in_project_interactive() {
+  show_cmd bash -lc "cd $(printf '%q' "$INSTALL_DIR") && $*"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    return 0
+  fi
+  if [[ -r /dev/tty ]]; then
+    (cd "$INSTALL_DIR" && bash -lc "$*" </dev/tty)
+  else
+    (cd "$INSTALL_DIR" && bash -lc "$*")
+  fi
+}
+
 echo "Instalador Telegram OpenCode Bot"
 
 need git
@@ -96,10 +108,10 @@ else
   run git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
-run_in_project "npm run setup"
+run_in_project_interactive "npm run setup"
 
 if [[ "$START_AFTER_SETUP" == "1" ]]; then
-  run_in_project "npm start"
+  run_in_project_interactive "npm start"
 else
   echo "Setup concluído. Para iniciar depois: cd $INSTALL_DIR && npm start"
 fi
