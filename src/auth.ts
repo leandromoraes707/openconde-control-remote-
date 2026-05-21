@@ -1,5 +1,6 @@
 export type Authorizer = {
   isAllowed(userId: number | undefined): boolean;
+  register(userId: number): void;
 };
 
 export function createAuthorizer(allowedUserIds: number[]): Authorizer {
@@ -8,6 +9,11 @@ export function createAuthorizer(allowedUserIds: number[]): Authorizer {
   return {
     isAllowed(userId) {
       return typeof userId === "number" && allowed.has(userId);
+    },
+    register(userId) {
+      if (!allowed.has(userId)) {
+        allowed.add(userId);
+      }
     }
   };
 }

@@ -22,13 +22,12 @@ describe("loadConfig", () => {
     expect(config.notificationFlushMs).toBe(10);
   });
 
-  it("rejects missing allowlist", () => {
-    expect(() =>
-      loadConfig({
-        TELEGRAM_BOT_TOKEN: "123456789:example-token",
-        TELEGRAM_ALLOWED_USER_IDS: "",
-        OPENCODE_WORKSPACE: "/tmp/workspace"
-      })
-    ).toThrow("TELEGRAM_ALLOWED_USER_IDS");
+  it("allows empty allowlist for bootstrap mode", () => {
+    const config = loadConfig({
+      TELEGRAM_BOT_TOKEN: "123456789:example-token",
+      OPENCODE_WORKSPACE: "/tmp/workspace"
+    });
+
+    expect(config.allowedUserIds).toEqual([]);
   });
 });

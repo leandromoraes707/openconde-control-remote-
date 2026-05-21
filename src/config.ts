@@ -13,8 +13,8 @@ export type AppConfig = {
 
 const EnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1),
-  TELEGRAM_ALLOWED_USER_IDS: z.string().min(1),
-  OPENCODE_WORKSPACE: z.string().min(1),
+  TELEGRAM_ALLOWED_USER_IDS: z.string().default(""),
+  OPENCODE_WORKSPACE: z.string().min(1).default(process.cwd()),
   OPENCODE_SERVER_URL: z.string().url().default("http://127.0.0.1:4096"),
   OPENCODE_SERVER_PASSWORD: z.string().optional(),
   DATABASE_PATH: z.string().min(1).default("./telegram-opencode.sqlite"),
@@ -25,12 +25,10 @@ const EnvSchema = z.object({
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   const parsed = EnvSchema.parse(env);
   const allowedUserIds = parsed.TELEGRAM_ALLOWED_USER_IDS.split(",")
-    .map((value) => Number(value.trim()))
+    .map((value) => value.trim())
+    .filter((value) => value !== "")
+    .map((value) => Number(value))
     .filter((value) => Number.isInteger(value));
-
-  if (allowedUserIds.length === 0) {
-    throw new Error("TELEGRAM_ALLOWED_USER_IDS must contain at least one numeric Telegram user id");
-  }
 
   return {
     telegramBotToken: parsed.TELEGRAM_BOT_TOKEN,

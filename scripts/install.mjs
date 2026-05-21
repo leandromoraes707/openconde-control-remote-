@@ -14,7 +14,7 @@ if (args.help) {
 
 const dryRun = Boolean(args["dry-run"]);
 const skipInstall = Boolean(args["skip-install"]);
-const skipChecks = Boolean(args["skip-checks"]);
+const skipChecks = !Boolean(args["checks"]);
 const rl = createInterface({ input, output });
 
 try {
@@ -27,7 +27,7 @@ async function main() {
   console.log("Setup Telegram OpenCode Bot");
 
   if (!dryRun && existsSync(".env")) {
-    const overwrite = await ask("Já existe .env. Sobrescrever? [s/N] ");
+    const overwrite = await ask("Ja existe .env. Sobrescrever? [s/N] ");
     if (!/^s(im)?$/i.test(overwrite)) {
       console.log("Setup cancelado. .env preservado.");
       return;
@@ -46,18 +46,17 @@ async function main() {
     console.log(`Token validado: @${botUsername}`);
   }
 
-  const allowedUserId = args["user-id"] || (dryRun ? "111111111" : await authorizeTelegramUser(token, botUsername));
-  const envText = buildEnv({ token, allowedUserId, workspace, serverPassword });
+  const envText = buildEnv({ token, workspace, serverPassword });
 
   if (dryRun) {
     console.log("\n.env que seria gerado:");
     console.log(redactToken(envText, token));
-    console.log("Dry-run concluído. Nada foi instalado nem escrito.");
+    console.log("Dry-run concluido. Nada foi instalado nem escrito.");
     return;
   }
 
   writeFileSync(".env", envText, { mode: 0o600 });
-  console.log(".env gerado com token, usuário autorizado e senha local do OpenCode.");
+  console.log(".env gerado com token e senha local do OpenCode.");
 
   if (!skipInstall) run("npm", ["install"]);
   checkOpenCode();
@@ -70,29 +69,8 @@ async function main() {
 
   console.log("\nPronto.");
   console.log("1. Rode: npm start");
-  console.log("2. No Telegram, envie: /ajuda");
-  console.log("3. Crie demanda com: /nova <o que você quer que o OpenCode faça>");
-}
-
-async function authorizeTelegramUser(token, botUsername) {
-  const before = await telegramApi(token, "getUpdates", { timeout: 0, limit: 100, allowed_updates: ["message"] });
-  let offset = latestUpdateId(before) + 1;
-
-  console.log(`\nAbra https://t.me/${botUsername} e envie /start para o bot.`);
-  await ask("Depois de enviar /start, pressione Enter aqui. ");
-
-  for (let attempt = 1; attempt <= 12; attempt += 1) {
-    const updates = await telegramApi(token, "getUpdates", { timeout: 5, limit: 100, offset, allowed_updates: ["message"] });
-    offset = Math.max(offset, latestUpdateId(updates) + 1);
-    const userId = findPrivateUserId(updates);
-    if (userId) {
-      console.log(`Usuário autorizado: ${userId}`);
-      return userId;
-    }
-    console.log("Aguardando mensagem /start no Telegram...");
-  }
-
-  throw new Error("Não encontrei /start do Telegram. Rode npm run setup novamente e envie /start para o bot.");
+  console.log("2. No Telegram, envie /start para o bot (isso registra voce como usuario autorizado)");
+  console.log("3. Crie demanda com: /nova <o que voce quer que o OpenCode faca>");
 }
 
 async function verifyTelegramToken(token) {
@@ -116,10 +94,10 @@ async function telegramApi(token, method, body) {
   return data.result;
 }
 
-function buildEnv({ token, allowedUserId, workspace, serverPassword }) {
+function buildEnv({ token, workspace, serverPassword }) {
   return [
     envLine("TELEGRAM_BOT_TOKEN", token),
-    envLine("TELEGRAM_ALLOWED_USER_IDS", allowedUserId),
+    envLine("TELEGRAM_ALLOWED_USER_IDS", ""),
     envLine("OPENCODE_WORKSPACE", workspace),
     envLine("OPENCODE_SERVER_URL", "http://127.0.0.1:4096"),
     envLine("OPENCODE_SERVER_PASSWORD", serverPassword),
@@ -135,18 +113,6 @@ function envLine(key, value) {
 
 function quoteEnv(value) {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-function findPrivateUserId(updates) {
-  for (const update of [...updates].reverse()) {
-    const message = update.message;
-    if (message?.chat?.type === "private" && Number.isInteger(message.from?.id)) return String(message.from.id);
-  }
-  return undefined;
-}
-
-function latestUpdateId(updates) {
-  return updates.reduce((latest, update) => Math.max(latest, Number(update.update_id) || 0), 0);
 }
 
 function run(command, commandArgs) {
@@ -204,15 +170,14 @@ function printHelp() {
 
 Fluxo interativo:
   1. cola token do BotFather
-  2. envia /start para o bot
-  3. instalador gera .env, instala pacotes e valida QA
+  2. instalador gera .env e instala pacotes
+  3. rode npm start e envie /start no Telegram para se registrar
 
-Opções:
-  --dry-run              mostra o .env sem escrever arquivo nem chamar Telegram
+Opcoes:
+  --dry-run              mostra o .env sem escrever arquivo
   --token <token>        informa token sem prompt
-  --user-id <id>         informa Telegram user id sem capturar /start
   --workspace <path>     muda OPENCODE_WORKSPACE
-  --skip-install         não roda npm install
-  --skip-checks          não roda typecheck/test/qa:fake
+  --skip-install         nao roda npm install
+  --checks               roda typecheck/test/qa:fake (desligado por padrao)
 `);
 }

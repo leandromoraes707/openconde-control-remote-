@@ -6,7 +6,7 @@ import { renderDemandLine } from "../domain/kanban.js";
 export function createTelegramBot(token: string, authorizer: Authorizer, manager: DemandManager): Telegraf<Context> {
   const bot = new Telegraf(token);
 
-  bot.start((ctx) => guarded(ctx, authorizer, () => ctx.reply(helpText())));
+  bot.start((ctx) => handleStart(ctx, authorizer));
   bot.command("ajuda", (ctx) => guarded(ctx, authorizer, () => ctx.reply(helpText())));
 
   bot.command("nova", (ctx) =>
@@ -108,6 +108,15 @@ export function createTelegramBot(token: string, authorizer: Authorizer, manager
   });
 
   return bot;
+}
+
+async function handleStart(ctx: Context, authorizer: Authorizer): Promise<void> {
+  const userId = ctx.from?.id;
+  if (typeof userId !== "number") return;
+  if (!authorizer.isAllowed(userId)) {
+    authorizer.register(userId);
+  }
+  await ctx.reply(helpText());
 }
 
 async function guarded(ctx: Context, authorizer: Authorizer, run: () => Promise<unknown> | unknown): Promise<void> {
