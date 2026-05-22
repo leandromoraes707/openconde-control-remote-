@@ -1,6 +1,6 @@
 # Telegram OpenCode Bot
 
-Ponte local-first entre Telegram e OpenCode. O bot cria demandas, controla sessões pelo `opencode serve`, mostra um Kanban textual no Telegram e notifica decisão, atenção, erro e conclusão.
+Ponte local-first entre Telegram e OpenCode. O Telegram vira chat do OpenCode: texto normal conversa com o agente, enquanto o Kanban fica só como gestor/auditoria das tarefas e sessões controladas pelo `opencode serve`.
 
 ## Instalação prática
 
@@ -26,7 +26,7 @@ Se você já está dentro da pasta do projeto:
 npm run setup && npm start
 ```
 
-Depois que o terminal mostrar que o bot está pronto, abra o link `https://t.me/<seu_bot>` no Telegram e envie `/start`. Esse primeiro `/start` registra e persiste seu usuário autorizado. Depois disso, envie texto normal no Telegram para criar demandas. Não envie `npm start` no Telegram; esse comando é só do terminal.
+Depois que o terminal mostrar que o bot está pronto, abra o link `https://t.me/<seu_bot>` no Telegram e envie `/start`. Esse primeiro `/start` registra e persiste seu usuário autorizado. Depois disso, envie qualquer texto normal para conversar com o OpenCode; as respostas do agente voltam no próprio Telegram. Não envie `npm start` no Telegram; esse comando é só do terminal.
 
 ### Pré-requisitos
 
@@ -75,14 +75,16 @@ Depois preencha `.env`, rode `npm run opencode:serve` e `npm run dev`.
 
 ## Uso no Telegram
 
-- `/start` ou `/ajuda`: registra o usuário e mostra ajuda.
-- Texto normal: cria uma demanda e envia para o OpenCode.
-- `/nova <demanda>`: cria uma demanda explicitamente.
-- `/kanban`: mostra demandas por coluna.
+- `/start`, `/help` ou `/ajuda`: registra o usuário e mostra ajuda.
+- Texto normal: conversa com o OpenCode; se já houver conversa ativa, continua a sessão ativa mais recente.
+- Resposta a pergunta/permissão pendente: envie texto normal no chat, ou use `/responder <id> <texto>` quando houver mais de uma conversa ativa.
+- `/new [mensagem]` ou `/clear [mensagem]`: abre uma nova conversa OpenCode mesmo se já existir outra ativa; sem mensagem, a próxima mensagem normal continua essa conversa nova.
+- `/nova [mensagem]`: alias em português para `/new`.
+- `/kanban`: mostra o gestor/auditoria das conversas por coluna.
 - `/listar`: lista as últimas demandas.
 - `/status <id>`: mostra estado detalhado.
 - `/eventos <id>`: mostra histórico auditável.
-- `/responder <id> <texto>`: responde pergunta/permissão pendente.
+- `/responder <id> <texto>`: alternativa explícita para responder pergunta/permissão pendente.
 - `/cancelar <id>`: cancela demanda ativa.
 
 ## Segurança

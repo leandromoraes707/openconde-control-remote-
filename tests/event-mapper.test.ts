@@ -22,4 +22,27 @@ describe("mapOpenCodeEvent", () => {
       sessionId: "ses_1"
     });
   });
+
+  it("maps assistant text parts into user-visible progress", () => {
+    expect(mapOpenCodeEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "ses_1", part: { type: "text", role: "assistant", text: "Resposta final" } }
+    })).toMatchObject({
+      type: "progress",
+      sessionId: "ses_1",
+      message: "Resposta final",
+      visibleToUser: true
+    });
+  });
+
+  it("does not echo user text parts as assistant output", () => {
+    expect(mapOpenCodeEvent({
+      type: "message.part.updated",
+      properties: { sessionID: "ses_1", part: { type: "text", role: "user", text: "minha pergunta" } }
+    })).toMatchObject({
+      type: "progress",
+      sessionId: "ses_1",
+      visibleToUser: false
+    });
+  });
 });

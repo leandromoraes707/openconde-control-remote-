@@ -2,7 +2,7 @@
 
 ## Conceito
 
-Cada mensagem de demanda cria um card. O bot guarda a demanda no SQLite, cria uma sessão no OpenCode e acompanha eventos pelo stream `/event`.
+O Telegram é a interface de chat do OpenCode. Texto normal é enviado ao agente e as respostas do agente voltam no próprio Telegram. O Kanban não é a interface principal da conversa; ele é apenas o gestor/auditoria das sessões, estados, eventos e pendências persistidos no SQLite.
 
 ## Instalação cola-token
 
@@ -32,7 +32,7 @@ Depois, mantenha este comando rodando no terminal:
 npm start
 ```
 
-No Telegram, abra o link do bot e envie `/start`. O primeiro `/start` registra seu usuário em `TELEGRAM_ALLOWED_USER_IDS`. A partir daí, envie texto normal para criar demandas.
+No Telegram, abra o link do bot e envie `/start`. O primeiro `/start` registra seu usuário em `TELEGRAM_ALLOWED_USER_IDS`. A partir daí, envie texto normal para conversar com o OpenCode.
 
 Não envie `npm start` no Telegram; esse comando é apenas do terminal.
 
@@ -40,9 +40,12 @@ Não envie `npm start` no Telegram; esse comando é apenas do terminal.
 
 ```text
 /start
+/help
 /ajuda
-texto normal para criar demanda
-/nova <descrição>
+texto normal para conversar com o OpenCode
+/new [mensagem]
+/clear [mensagem]
+/nova [mensagem]
 /kanban
 /listar
 /status <id>
@@ -54,10 +57,12 @@ texto normal para criar demanda
 ## Fluxo recomendado
 
 1. Envie uma mensagem normal, por exemplo: `corrigir erro X e rodar validações`.
-2. Use `/kanban` para ver a demanda na coluna `Executando`.
-3. Se o OpenCode pedir decisão, o card muda para `Aguardando`.
-4. Responda com `/responder <id> <texto>`.
+2. O bot inicia ou continua a sessão ativa mais recente do OpenCode e responde no próprio Telegram quando o agente falar.
+3. Use `/kanban` apenas para acompanhar auditoria/estado da tarefa.
+4. Se o OpenCode pedir decisão, o card muda para `Aguardando`; responda com texto normal ou com `/responder <id> <texto>` quando houver mais de uma conversa ativa.
 5. Ao finalizar, o card vai para `Concluídas`; consulte `/eventos <id>` para auditoria.
+
+Para abrir outra conversa sem cancelar a atual, use `/new`, `/clear` ou `/nova`. Com texto, por exemplo `/new investigue o login`, o bot cria uma sessão nova e já envia esse prompt. Sem texto, ele abre uma sessão vazia; a próxima mensagem normal vai para essa conversa nova.
 
 ## Colunas do Kanban
 
@@ -76,4 +81,4 @@ Para permissões do OpenCode, use um destes prefixos no texto:
 - `always <mensagem>`: permite sempre quando o OpenCode aceitar essa opção.
 - `reject <motivo>`: rejeita.
 
-Para perguntas normais, o texto é enviado como resposta humana.
+Para perguntas normais, o texto comum no chat é enviado como resposta humana. `/responder <id> <texto>` continua disponível como forma explícita.

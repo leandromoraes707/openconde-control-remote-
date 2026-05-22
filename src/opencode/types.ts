@@ -36,6 +36,7 @@ export type MappedOpenCodeEvent = {
   sessionId?: string;
   message: string;
   rawExcerpt?: string;
+  visibleToUser?: boolean;
   pendingRequestId?: string;
   pendingRequestType?: PendingRequestType;
 };

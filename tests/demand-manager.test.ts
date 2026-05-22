@@ -29,6 +29,73 @@ describe("DemandManager", () => {
     store.close();
   });
 
+  it("continues the active OpenCode conversation from normal chat text", async () => {
+    const { store, client, manager } = createFixture();
+    const demand = await manager.handleChatMessage({ chatId: 10, userId: 20, prompt: "corrigir bug" });
+
+    const continued = await manager.handleChatMessage({ chatId: 10, userId: 20, prompt: "também rode npm test" });
+
+    expect(demand.action).toBe("created");
+    expect(continued.action).toBe("continued");
+    expect(continued.demand.id).toBe(demand.demand.id);
+    expect(client.prompts).toEqual([
+      { sessionId: "fake-session-1", prompt: "corrigir bug", workspacePath: "/tmp/workspace" },
+      { sessionId: "fake-session-1", prompt: "também rode npm test", workspacePath: "/tmp/workspace" }
+    ]);
+    expect(manager.listDemandCards()).toHaveLength(1);
+    store.close();
+  });
+
+  it("opens a blank new conversation even when another conversation is active", async () => {
+    const { store, client, manager } = createFixture();
+    const first = await manager.createDemand({ chatId: 10, userId: 20, prompt: "primeira conversa" });
+
+    const second = await manager.startNewConversation({ chatId: 10, userId: 20 });
+    const continued = await manager.handleChatMessage({ chatId: 10, userId: 20, prompt: "mensagem para a nova conversa" });
+
+    expect(second.id).not.toBe(first.id);
+    expect(second.status).toBe("running");
+    expect(second.title).toBe("Nova conversa");
+    expect(continued.action).toBe("continued");
+    expect(continued.demand.id).toBe(second.id);
+    expect(client.prompts).toEqual([
+      { sessionId: "fake-session-1", prompt: "primeira conversa", workspacePath: "/tmp/workspace" },
+      { sessionId: "fake-session-2", prompt: "mensagem para a nova conversa", workspacePath: "/tmp/workspace" }
+    ]);
+    expect(manager.listDemandCards()).toHaveLength(2);
+    store.close();
+  });
+
+  it("starts a prompted new conversation without the active-demand guard", async () => {
+    const { store, client, manager } = createFixture();
+    await manager.createDemand({ chatId: 10, userId: 20, prompt: "primeira conversa" });
+
+    const second = await manager.startNewConversation({ chatId: 10, userId: 20, prompt: "segunda conversa" });
+
+    expect(second.opencodeSessionId).toBe("fake-session-2");
+    expect(client.prompts).toEqual([
+      { sessionId: "fake-session-1", prompt: "primeira conversa", workspacePath: "/tmp/workspace" },
+      { sessionId: "fake-session-2", prompt: "segunda conversa", workspacePath: "/tmp/workspace" }
+    ]);
+    store.close();
+  });
+
+  it("sends assistant text back to Telegram notifications", async () => {
+    const { store, notifications, manager } = createFixture();
+    const demand = await manager.createDemand({ chatId: 10, userId: 20, prompt: "explicar status" });
+
+    await manager.handleOpenCodeEvent({
+      type: "message.part.updated",
+      properties: {
+        sessionID: demand.opencodeSessionId,
+        part: { type: "text", role: "assistant", text: "Pronto, revisei o projeto." }
+      }
+    });
+
+    expect(notifications).toContain("OpenCode:\nPronto, revisei o projeto.");
+    store.close();
+  });
+
   it("moves a demand to waiting_user and responds to a question", async () => {
     const { store, client, manager } = createFixture();
     const demand = await manager.createDemand({ chatId: 10, userId: 20, prompt: "corrigir bug" });

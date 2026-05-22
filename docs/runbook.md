@@ -20,7 +20,7 @@ Fluxo quando o OpenCode já abriu dentro da pasta do projeto:
 npm run setup && npm start
 ```
 
-O setup interativo valida o token do Telegram, gera `.env`, instala dependências e deixa a allowlist vazia para bootstrap. O primeiro `/start` recebido pelo bot em execução registra e persiste o usuário em `TELEGRAM_ALLOWED_USER_IDS`.
+O setup interativo valida o token do Telegram, gera `.env`, instala dependências e deixa a allowlist vazia para bootstrap. O primeiro `/start` recebido pelo bot em execução registra e persiste o usuário em `TELEGRAM_ALLOWED_USER_IDS`; depois disso, texto normal conversa com a sessão ativa mais recente do OpenCode, `/new`, `/clear` ou `/nova` abre outra conversa, e o Kanban serve só para gestão/auditoria.
 
 Validações são opt-in no setup:
 
@@ -55,6 +55,8 @@ O usuário autorizado fica persistido em `.env`. Se a allowlist estiver vazia de
 
 O client HTTP reconecta o stream `/event`. A cada erro/reconexão, o gerenciador reconcilia demandas ativas com `/session/status` para reduzir perda de evento crítico.
 
+Se respostas do agente não aparecerem no Telegram, verifique primeiro se o stream `/event` está emitindo eventos `message.part.*` com `part.type = "text"` e sessão correspondente. O card pode continuar visível no Kanban mesmo quando a fala do agente não foi recebida pelo stream.
+
 ## Segurança mínima
 
 - `TELEGRAM_BOT_TOKEN` nunca deve ir para argumento CLI, chat, issue ou log. Se vazou, revogue no BotFather e gere outro.
@@ -72,4 +74,4 @@ O client HTTP reconecta o stream `/event`. A cada erro/reconexão, o gerenciador
 npm run qa:fake
 ```
 
-O script cria uma demanda, simula pergunta, envia resposta, simula conclusão e imprime Kanban/eventos.
+O script cria uma demanda, simula pergunta, envia resposta, abre uma conversa vazia com o mesmo fluxo de `/new`, envia texto normal para essa conversa nova, simula conclusão e imprime Kanban/eventos.

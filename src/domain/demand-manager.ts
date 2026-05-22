@@ -16,6 +16,17 @@ type CreateDemandInput = {
   prompt: string;
 };
 
+type StartConversationInput = {
+  chatId: number;
+  userId: number;
+  prompt?: string;
+};
+
+export type ChatMessageResult = {
+  action: "created" | "continued" | "responded";
+  demand: Demand;
+};
+
 const TERMINAL_STATUSES: DemandStatus[] = ["completed", "failed", "cancelled"];
 
 export class DemandManager {
@@ -57,10 +68,26 @@ export class DemandManager {
       throw new Error(`Você já tem uma demanda ativa (#${active.id}). Use /status ${active.id} ou /cancelar ${active.id}.`);
     }
 
+    return this.createOpenCodeDemand(input);
+  }
+
+  async startNewConversation(input: StartConversationInput): Promise<Demand> {
+    return this.createOpenCodeDemand({
+      chatId: input.chatId,
+      userId: input.userId,
+      prompt: input.prompt?.trim() ?? ""
+    });
+  }
+
+  private async createOpenCodeDemand(input: CreateDemandInput): Promise<Demand> {
+    const prompt = input.prompt.trim();
+    const title = prompt ? undefined : "Nova conversa";
+
     const demand = this.store.createDemand({
       chatId: input.chatId,
       userId: input.userId,
-      prompt: input.prompt,
+      title,
+      prompt,
       workspacePath: this.options.workspacePath
     });
     this.store.addEvent({ demandId: demand.id, type: "created", message: "Demanda criada no Telegram." });
@@ -73,8 +100,12 @@ export class DemandManager {
         lastActivityAt: new Date().toISOString()
       });
       this.store.addEvent({ demandId: demand.id, type: "started", message: `Sessão OpenCode ${session.sessionId} iniciada.` });
-      await this.client.sendPrompt(session.sessionId, input.prompt, demand.workspacePath);
-      await this.notify(running.chatId, `#${running.id} em execução. Veja /kanban ou /status ${running.id}.`);
+      if (prompt) {
+        await this.client.sendPrompt(session.sessionId, prompt, demand.workspacePath);
+        await this.notify(running.chatId, `#${running.id} em execução. Veja /kanban ou /status ${running.id}.`);
+      } else {
+        await this.notify(running.chatId, `#${running.id} nova conversa iniciada. Envie uma mensagem para falar com o OpenCode.`);
+      }
       return running;
     } catch (error) {
       const message = toError(error).message;
@@ -87,6 +118,26 @@ export class DemandManager {
       await this.notify(failed.chatId, `#${failed.id} falhou ao iniciar: ${message}`);
       return failed;
     }
+  }
+
+  async handleChatMessage(input: CreateDemandInput): Promise<ChatMessageResult> {
+    const active = this.store.findActiveDemandForUser(input.userId);
+    if (active?.pendingRequestId && active.pendingRequestType) {
+      return { action: "responded", demand: await this.respondToDemand(active.id, input.userId, input.prompt) };
+    }
+
+    if (active?.opencodeSessionId) {
+      await this.client.sendPrompt(active.opencodeSessionId, input.prompt, active.workspacePath);
+      this.store.addResponse({ demandId: active.id, userId: input.userId, message: input.prompt });
+      const running = this.store.updateDemand(active.id, {
+        status: "running",
+        lastActivityAt: new Date().toISOString()
+      });
+      this.store.addEvent({ demandId: active.id, type: "response", message: "Mensagem humana enviada ao OpenCode." });
+      return { action: "continued", demand: running };
+    }
+
+    return { action: "created", demand: await this.createDemand(input) };
   }
 
   async handleOpenCodeEvent(event: OpenCodeEvent): Promise<void> {
@@ -137,6 +188,7 @@ export class DemandManager {
       this.store.updateDemand(demand.id, { status: "running", lastActivityAt: now });
     }
     this.store.addEvent({ demandId: demand.id, type: mapped.type, message: mapped.message, rawExcerpt: mapped.rawExcerpt });
+    if (mapped.visibleToUser) await this.notify(demand.chatId, `OpenCode:\n${mapped.message}`);
   }
 
   async respondToDemand(id: number, userId: number, message: string): Promise<Demand> {

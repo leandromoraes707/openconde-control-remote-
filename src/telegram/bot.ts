@@ -21,24 +21,13 @@ export function createTelegramBot(
   const bot = new Telegraf(token);
 
   bot.start((ctx) => handleStart(ctx, authorizer, options));
+  bot.command("help", (ctx) => guarded(ctx, authorizer, () => ctx.reply(helpText())));
   bot.command("ajuda", (ctx) => guarded(ctx, authorizer, () => ctx.reply(helpText())));
 
-  bot.command("nova", (ctx) =>
-    guarded(ctx, authorizer, async () => {
-      const prompt = textAfterCommand(ctx);
-      if (!prompt) {
-        await ctx.reply("Use: /nova <descrição da demanda>");
-        return;
-      }
-
-      const chatId = ctx.chat?.id;
-      const userId = ctx.from?.id;
-      if (typeof chatId !== "number" || typeof userId !== "number") return;
-
-      const demand = await manager.createDemand({ chatId, userId, prompt });
-      await ctx.reply(`Demanda #${demand.id} criada: ${demand.title}\nVeja /kanban ou /status ${demand.id}.`);
-    })
-  );
+  const startNewConversation = (ctx: Context) => handleNewConversation(ctx, authorizer, manager);
+  bot.command("new", startNewConversation);
+  bot.command("clear", startNewConversation);
+  bot.command("nova", startNewConversation);
 
   bot.command("kanban", (ctx) => guarded(ctx, authorizer, () => ctx.reply(manager.renderKanban())));
 
@@ -125,8 +114,18 @@ export function createTelegramBot(
       const userId = ctx.from?.id;
       if (typeof chatId !== "number" || typeof userId !== "number") return;
 
-      const demand = await manager.createDemand({ chatId, userId, prompt });
-      await ctx.reply(`Demanda #${demand.id} criada: ${demand.title}\nVeja /kanban ou /status ${demand.id}.`);
+      const result = await manager.handleChatMessage({ chatId, userId, prompt });
+      if (result.action === "responded") {
+        await ctx.reply(`Enviei sua resposta para o OpenCode na conversa #${result.demand.id}.`);
+        return;
+      }
+
+      if (result.action === "continued") {
+        await ctx.reply(`Enviei sua mensagem para o OpenCode na conversa #${result.demand.id}.`);
+        return;
+      }
+
+      await ctx.reply(`Conversa #${result.demand.id} iniciada no OpenCode. Vou responder aqui quando o agente falar.`);
     })
   );
 
@@ -152,6 +151,21 @@ async function handleStart(ctx: Context, authorizer: Authorizer, options: Telegr
   await ctx.reply([authorization.status === "registered" ? `Usuário ${userId} autorizado neste bot.` : undefined, helpText()].filter(Boolean).join("\n\n"));
 }
 
+async function handleNewConversation(ctx: Context, authorizer: Authorizer, manager: DemandManager): Promise<void> {
+  await guarded(ctx, authorizer, async () => {
+    const chatId = ctx.chat?.id;
+    const userId = ctx.from?.id;
+    if (typeof chatId !== "number" || typeof userId !== "number") return;
+
+    const prompt = textAfterCommand(ctx);
+    const demand = await manager.startNewConversation({ chatId, userId, prompt });
+    const message = prompt
+      ? `Conversa #${demand.id} iniciada no OpenCode. Vou responder aqui quando o agente falar.`
+      : `Conversa #${demand.id} aberta no OpenCode. Envie a próxima mensagem normalmente para continuar nela.`;
+    await ctx.reply(message);
+  });
+}
+
 export function authorizeStartUser(authorizer: Authorizer, userId: number): StartAuthorization {
   if (authorizer.isAllowed(userId)) return { status: "allowed", userIds: authorizer.allowedUserIds() };
   if (authorizer.allowedUserIds().length > 0) return { status: "denied", userIds: authorizer.allowedUserIds() };
@@ -170,9 +184,12 @@ async function guarded(ctx: Context, authorizer: Authorizer, run: () => Promise<
 function helpText(): string {
   return [
     "Telegram OpenCode Bot",
-    "Envie uma mensagem normal para criar demanda no OpenCode.",
+    "Envie qualquer mensagem normal para conversar com o OpenCode.",
     "Ex.: corrigir o erro X e rodar os testes",
-    "/nova <demanda> — criar demanda explicitamente",
+    "O Kanban é só o gestor/auditoria das conversas em andamento.",
+    "Se o OpenCode pedir algo, responda com texto normal ou use /responder <id> <texto>.",
+    "/new ou /clear [mensagem] — abrir nova conversa OpenCode",
+    "/nova [mensagem] — alias em português para /new",
     "/kanban — visão principal",
     "/listar — últimas demandas",
     "/status <id> — detalhes",
