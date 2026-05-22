@@ -124,10 +124,15 @@ function findText(value: unknown, key?: string): string | undefined {
 }
 
 function cleanText(value: string | undefined): string | undefined {
-  const cleaned = value?.replace(/\r\n/g, "\n").trim();
+  if (!value) return undefined;
+  const cleaned = value
+    .replace(/<dcp-message-id>[^<]*<\/dcp-message-id>/gi, "")
+    .replace(/\r\n/g, "\n")
+    .trim();
   return cleaned || undefined;
 }
 
 function truncate(value: string, maxLength: number): string {
-  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 3)}...`;
+  const stripped = value.replace(/<dcp-message-id>[^<]*<\/dcp-message-id>/gi, "");
+  return stripped.length <= maxLength ? stripped : `${stripped.slice(0, maxLength - 3)}...`;
 }

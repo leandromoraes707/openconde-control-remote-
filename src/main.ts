@@ -4,7 +4,7 @@ import { createAuthorizer } from "./auth.js";
 import { loadConfig } from "./config.js";
 import { DemandManager } from "./domain/demand-manager.js";
 import { upsertEnvValue } from "./env-file.js";
-import { PtyOpenCodeClient } from "./opencode/pty-client.js";
+import { HttpOpenCodeClient } from "./opencode/http-client.js";
 import { SqliteStore } from "./store/sqlite-store.js";
 import { createTelegramBot } from "./telegram/bot.js";
 import { BufferedNotifier } from "./telegram/notifier.js";
@@ -17,7 +17,7 @@ export async function main(): Promise<void> {
   const config = loadConfig(process.env);
   const store = new SqliteStore(config.databasePath);
   const authorizer = createAuthorizer(config.allowedUserIds);
-  const client = new PtyOpenCodeClient(config.opencodeWorkspace);
+  const client = new HttpOpenCodeClient({ baseUrl: config.opencodeServerUrl, password: config.opencodeServerPassword });
   const manager = new DemandManager(store, client, {
     workspacePath: config.opencodeWorkspace,
     pendingResponseTimeoutMinutes: config.pendingResponseTimeoutMinutes
