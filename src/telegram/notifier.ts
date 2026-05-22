@@ -55,8 +55,37 @@ export class BufferedNotifier implements DemandNotifier {
     this.timers.delete(chatId);
 
     if (messages.length === 0) return;
-    await this.sender(chatId, compactTelegramMessage(messages.join("\n\n"), this.maxMessageLength));
+
+    const grouped = groupStreamingMessages(messages);
+    for (const groupedMsg of grouped) {
+      await this.sender(chatId, compactTelegramMessage(groupedMsg, this.maxMessageLength));
+    }
   }
+}
+
+function groupStreamingMessages(messages: string[]): string[] {
+  const result: string[] = [];
+  let streamingBlock: string[] = [];
+
+  for (const msg of messages) {
+    if (msg.startsWith("OpenCode:\n")) {
+      streamingBlock.push(msg.slice(9).trim());
+    } else {
+      if (streamingBlock.length > 0) {
+        const combined = streamingBlock.join(" ");
+        if (combined) result.push(`OpenCode:\n${combined}`);
+        streamingBlock = [];
+      }
+      result.push(msg);
+    }
+  }
+
+  if (streamingBlock.length > 0) {
+    const combined = streamingBlock.join(" ");
+    if (combined) result.push(`OpenCode:\n${combined}`);
+  }
+
+  return result;
 }
 
 export function compactTelegramMessage(message: string, maxLength = 3900): string {
